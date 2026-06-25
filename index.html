@@ -1,0 +1,506 @@
+<title>Seedance 2.0 預算推估報表</title>
+<style>
+  :root{
+    --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#FBFCFD;
+    --ink:#14181F; --ink-2:#3A4350; --muted:#697483; --faint:#9AA4B2;
+    --line:#E4E8EE; --line-2:#EEF1F5;
+    --teal:#0E7C86; --teal-dk:#0A5E66; --teal-wash:#E5F2F3;
+    --amber:#B45309; --amber-wash:#FBF0E2;
+    --green:#15803D; --green-wash:#E7F3EC;
+    --radius:10px;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","JetBrains Mono",Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"PingFang TC","Microsoft JhengHei",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.6;
+    -webkit-font-smoothing:antialiased;font-size:15px}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 24px 96px}
+  a{color:var(--teal-dk)}
+  h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+  .mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+  /* ---------- header ---------- */
+  header{background:linear-gradient(180deg,#0C2B2F 0%,#103A40 100%);color:#EAF3F4;
+    padding:40px 0 34px;margin-bottom:40px;border-bottom:3px solid var(--teal)}
+  header .wrap{padding-bottom:0}
+  .eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.18em;text-transform:uppercase;
+    color:#7FC6CE;margin-bottom:14px}
+  header h1{font-size:34px;font-weight:680;letter-spacing:-.01em;color:#fff}
+  header p.sub{margin:12px 0 0;color:#A9C7CB;max-width:60ch;font-size:15px}
+  .meta-row{display:flex;flex-wrap:wrap;gap:10px;margin-top:24px}
+  .chip{font-family:var(--mono);font-size:12.5px;background:rgba(255,255,255,.07);
+    border:1px solid rgba(127,198,206,.28);color:#CDE6E9;padding:5px 11px;border-radius:6px}
+  .chip b{color:#fff;font-weight:600}
+
+  /* ---------- section scaffold ---------- */
+  section{margin-bottom:44px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:18px;
+    padding-bottom:11px;border-bottom:1px solid var(--line)}
+  .sec-no{font-family:var(--mono);font-size:13px;color:var(--teal);font-weight:600}
+  .sec-head h2{font-size:21px;font-weight:640;letter-spacing:-.01em}
+  .sec-head .hint{margin-left:auto;color:var(--muted);font-size:13px}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+
+  /* ---------- calculator ---------- */
+  .calc{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:0}
+  .calc .controls{padding:24px;border-right:1px solid var(--line);background:var(--surface-2);
+    border-radius:var(--radius) 0 0 var(--radius)}
+  .calc .result{padding:24px}
+  .ctl{margin-bottom:17px}
+  .ctl:last-child{margin-bottom:0}
+  .ctl label{display:block;font-size:12px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;margin-bottom:6px}
+  .ctl label .en{font-family:var(--mono);text-transform:none;letter-spacing:0;color:var(--faint);font-weight:500}
+  select,input[type=number]{width:100%;font-family:var(--sans);font-size:15px;color:var(--ink);
+    background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:9px 11px;appearance:none}
+  select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2 4l4 4 4-4' stroke='%23697483' stroke-width='1.5' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 11px center;padding-right:30px;cursor:pointer}
+  select:focus,input:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal)}
+  .seg{display:flex;gap:6px}
+  .seg button{flex:1;font-family:var(--sans);font-size:14px;padding:8px;border:1px solid var(--line);
+    background:var(--surface);color:var(--ink-2);border-radius:7px;cursor:pointer;transition:.12s}
+  .seg button[aria-pressed=true]{background:var(--teal);color:#fff;border-color:var(--teal);font-weight:600}
+  .seg button:focus-visible{outline:2px solid var(--teal);outline-offset:1px}
+  .note-inline{font-size:12px;color:var(--amber);margin-top:6px;min-height:1px}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  /* result breakdown */
+  .price-big{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .price-big .amt{font-family:var(--mono);font-size:42px;font-weight:600;letter-spacing:-.02em;color:var(--ink)}
+  .price-big .cur{font-family:var(--mono);font-size:15px;color:var(--muted)}
+  .price-sub{color:var(--muted);font-size:13px;margin-bottom:20px}
+  .price-sub b{color:var(--teal-dk);font-family:var(--mono)}
+  .steps{display:flex;flex-direction:column;gap:0;border-top:1px solid var(--line-2)}
+  .step{display:grid;grid-template-columns:1fr auto;gap:8px 12px;padding:10px 0;
+    border-bottom:1px solid var(--line-2);align-items:baseline}
+  .step .k{font-size:13.5px;color:var(--ink-2)}
+  .step .k small{display:block;font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:1px}
+  .step .v{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:14.5px;text-align:right;color:var(--ink)}
+  .step.bill{background:var(--teal-wash);margin:0 -24px;padding-left:24px;padding-right:24px;border-bottom:none}
+  .step.bill .v{color:var(--teal-dk);font-weight:600}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;padding:2px 7px;border-radius:5px;
+    vertical-align:middle;margin-left:7px;font-weight:600;letter-spacing:.02em}
+  .badge.min{background:var(--amber-wash);color:var(--amber)}
+  .badge.est{background:var(--teal-wash);color:var(--teal-dk)}
+  .batch{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+  .batch .b{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:11px 13px}
+  .batch .b .lbl{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  .batch .b .val{font-family:var(--mono);font-size:18px;font-weight:600;margin-top:3px}
+
+  /* ---------- formula pipeline ---------- */
+  .pipe{padding:22px 24px}
+  .frow{display:grid;grid-template-columns:30px 1fr;gap:14px;padding:14px 0;border-bottom:1px solid var(--line-2)}
+  .frow:last-child{border-bottom:none}
+  .frow .i{font-family:var(--mono);font-size:13px;color:#fff;background:var(--teal);width:26px;height:26px;
+    border-radius:50%;display:grid;place-items:center;font-weight:600}
+  .frow .body .t{font-weight:600;font-size:15px;margin-bottom:4px}
+  .frow .body .eq{font-family:var(--mono);font-size:13.5px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:6px;padding:7px 11px;color:var(--teal-dk);display:inline-block;margin:2px 0 4px;
+    overflow-x:auto;max-width:100%}
+  .frow .body .d{font-size:13px;color:var(--muted)}
+  .frow.hl .i{background:var(--amber)}
+  .frow.hl .eq{color:var(--amber);border-color:#EAD2B0}
+
+  /* ---------- tables ---------- */
+  .tbl-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:var(--radius)}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{padding:9px 13px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line-2)}
+  th:first-child,td:first-child{text-align:left}
+  thead th{background:var(--surface-2);font-size:11.5px;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--muted);font-weight:600;position:sticky;top:0}
+  tbody tr:last-child td{border-bottom:none}
+  td.num,th.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .rowhead{font-weight:600;color:var(--ink)}
+  .na{color:var(--faint)}
+  .cheap{color:var(--green);font-weight:600}
+  .tag-yes{color:var(--teal-dk)} .tag-no{color:var(--amber)}
+  caption{caption-side:top;text-align:left;font-size:13px;color:var(--muted);padding:0 0 9px;font-weight:500}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+  .foot{margin-top:54px;padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-size:12.5px}
+  .foot code{font-family:var(--mono);background:var(--surface);border:1px solid var(--line);padding:1px 5px;border-radius:4px}
+
+  @media (max-width:820px){
+    .calc{grid-template-columns:1fr}
+    .calc .controls{border-right:none;border-bottom:1px solid var(--line);border-radius:var(--radius) var(--radius) 0 0}
+    .grid2{grid-template-columns:1fr}
+    .batch{grid-template-columns:1fr}
+    header h1{font-size:27px}
+  }
+</style>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">BytePlus · Dreamina Seedance 2.0 · 計費逆向</div>
+    <h1>Seedance 2.0 影片生成 — 預算推估報表</h1>
+    <p class="sub">逐一切換官方價格計算器的每個選項、記錄計算輸出後，反推出完整計費公式。本報表含離線互動計算器、公式管線與全參數對照表，可直接用於批次成本估算。</p>
+    <div class="meta-row">
+      <span class="chip">資料來源：<b>官方 Price Calculator 表單</b></span>
+      <span class="chip">FPS 固定 <b>24</b></span>
+      <span class="chip">幣別 <b>USD</b></span>
+      <span class="chip">公式經 <b>3 model × 多參數</b> 交叉驗證</span>
+      <span class="chip">擷取日 <b>2026-06-25</b></span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ 1. CALCULATOR ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">01</span>
+      <h2>離線互動計算器</h2>
+      <span class="hint">完整複刻官方表單邏輯，本機即時計算</span>
+    </div>
+    <div class="card calc">
+      <div class="controls">
+        <div class="ctl">
+          <label>模型 <span class="en">Model</span></label>
+          <select id="model">
+            <option value="base">dreamina-seedance-2-0-260128（標準）</option>
+            <option value="fast">dreamina-seedance-2-0-fast-260128（fast）</option>
+            <option value="mini">dreamina-seedance-2-0-mini-260615（mini）</option>
+          </select>
+        </div>
+        <div class="ctl">
+          <label>是否含輸入影片 <span class="en">With Video in Input</span></label>
+          <div class="seg" id="video">
+            <button data-v="Yes" aria-pressed="true">有（Yes）</button>
+            <button data-v="No" aria-pressed="false">無（No）</button>
+          </div>
+        </div>
+        <div class="duo">
+          <div class="ctl" id="inwrap">
+            <label>輸入影片總長 <span class="en">In (s)</span></label>
+            <select id="indur"></select>
+          </div>
+          <div class="ctl">
+            <label>輸出影片長度 <span class="en">Out (s)</span></label>
+            <select id="outdur"></select>
+          </div>
+        </div>
+        <div class="ctl">
+          <label>解析度 <span class="en">Resolution</span></label>
+          <select id="res"></select>
+          <div class="note-inline" id="resnote"></div>
+        </div>
+        <div class="ctl">
+          <label>畫面比例 <span class="en">Aspect Ratio</span></label>
+          <select id="ar"></select>
+        </div>
+      </div>
+
+      <div class="result">
+        <div class="price-big">
+          <span class="amt" id="price">—</span>
+          <span class="cur">USD / 支</span>
+        </div>
+        <div class="price-sub" id="priceSub"></div>
+
+        <div class="steps">
+          <div class="step"><div class="k">輸出尺寸 <small>W × H (px)</small></div><div class="v" id="rWH">—</div></div>
+          <div class="step"><div class="k">每秒 token 係數 <small>W×H×FPS / 1024</small></div><div class="v" id="rFactor">—</div></div>
+          <div class="step"><div class="k">預估 token <small>(In+Out)×係數</small></div><div class="v" id="rEst">—</div></div>
+          <div class="step" id="rMinRow"><div class="k">最低 token <small>mindur×係數</small></div><div class="v" id="rMin">—</div></div>
+          <div class="step"><div class="k">計費時長 <small>Counted (s)</small></div><div class="v" id="rCounted">—</div></div>
+          <div class="step bill"><div class="k">計費 token <span id="billBadge"></span></div><div class="v" id="rBill">—</div></div>
+          <div class="step"><div class="k">單價 <small>USD / 百萬 token</small></div><div class="v" id="rUnit">—</div></div>
+        </div>
+
+        <div class="batch">
+          <div class="b"><div class="lbl">× 10 支</div><div class="val" id="b10">—</div></div>
+          <div class="b"><div class="lbl">× 100 支</div><div class="val" id="b100">—</div></div>
+          <div class="b"><div class="lbl">× 1000 支</div><div class="val" id="b1000">—</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 2. FORMULA PIPELINE ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">02</span>
+      <h2>計費公式管線</h2>
+      <span class="hint">官方表單背後的實際運算順序</span>
+    </div>
+    <div class="card pipe">
+      <div class="frow">
+        <div class="i">1</div>
+        <div class="body">
+          <div class="t">輸出尺寸由「解析度 × 比例」決定</div>
+          <div class="eq">W, H ← lookup(Resolution, Aspect Ratio)</div>
+          <div class="d">每個解析度的總像素量固定，依比例分配長寬（見 §4）。FPS 永遠是 24。</div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="i">2</div>
+        <div class="body">
+          <div class="t">每秒 token 係數</div>
+          <div class="eq">factor = W × H × FPS ÷ 1024</div>
+          <div class="d">這是「每一秒影片」消耗的 token 數，與模型無關，只看像素與幀率。</div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="i">3</div>
+        <div class="body">
+          <div class="t">預估 token（依實際總時長）</div>
+          <div class="eq">est = (InputDur + OutputDur) × factor　·　無輸入影片時 = OutputDur × factor</div>
+          <div class="d">輸入影片也要計費（需重新編碼），因此計入總時長。</div>
+        </div>
+      </div>
+      <div class="frow hl">
+        <div class="i">4</div>
+        <div class="body">
+          <div class="t">最低計費時長（僅「含輸入影片」時生效）</div>
+          <div class="eq">mindur = 2 × OutputDur − ⌊OutputDur ÷ 3⌋</div>
+          <div class="d">含輸入影片時有最低消耗門檻，<b>只跟輸出長度有關，與輸入長度無關</b>。例：out=5→9s、out=10→17s、out=15→25s。最低 token = mindur × factor。</div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="i">5</div>
+        <div class="body">
+          <div class="t">計費時長 = 實際與最低取大者</div>
+          <div class="eq">Counted = max(InputDur + OutputDur, mindur)　·　無輸入影片時 = OutputDur</div>
+          <div class="d">計費 token = Counted × factor＝ max(預估, 最低)。短輸入＋長輸出時，最低門檻常常蓋過實際時長。</div>
+        </div>
+      </div>
+      <div class="frow">
+        <div class="i">6</div>
+        <div class="body">
+          <div class="t">最終價格</div>
+          <div class="eq">Price (USD) = 計費 token × 單價 ÷ 1,000,000</div>
+          <div class="d">單價隨「模型 × 解析度 × 是否含輸入影片」變動（見 §3）。實際消耗以 API 回傳的 <code style="font-family:var(--mono)">usage.completion_tokens</code> 為準。</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. UNIT PRICE ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">03</span>
+      <h2>單價對照表</h2>
+      <span class="hint">USD / 百萬 token</span>
+    </div>
+    <div class="grid2">
+      <div>
+        <div class="tbl-scroll">
+          <table>
+            <caption><span class="tag-yes">●</span> 含輸入影片（With Video = Yes）</caption>
+            <thead><tr><th>模型</th><th class="num">480p</th><th class="num">720p</th><th class="num">1080p</th><th class="num">4k</th></tr></thead>
+            <tbody>
+              <tr><td class="rowhead">標準 base</td><td class="num">4.30</td><td class="num">4.30</td><td class="num">4.70</td><td class="num cheap">2.40</td></tr>
+              <tr><td class="rowhead">fast</td><td class="num">3.30</td><td class="num">3.30</td><td class="num na">—</td><td class="num na">—</td></tr>
+              <tr><td class="rowhead">mini</td><td class="num cheap">2.10</td><td class="num cheap">2.10</td><td class="num na">—</td><td class="num na">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <div class="tbl-scroll">
+          <table>
+            <caption><span class="tag-no">●</span> 無輸入影片（With Video = No）</caption>
+            <thead><tr><th>模型</th><th class="num">480p</th><th class="num">720p</th><th class="num">1080p</th><th class="num">4k</th></tr></thead>
+            <tbody>
+              <tr><td class="rowhead">標準 base</td><td class="num">7.00</td><td class="num">7.00</td><td class="num">7.70</td><td class="num cheap">4.00</td></tr>
+              <tr><td class="rowhead">fast</td><td class="num">5.60</td><td class="num">5.60</td><td class="num na">—</td><td class="num na">—</td></tr>
+              <tr><td class="rowhead">mini</td><td class="num cheap">3.50</td><td class="num cheap">3.50</td><td class="num na">—</td><td class="num na">—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <p style="color:var(--muted);font-size:12.5px;margin:12px 2px 0">
+      註：fast / mini <b>不支援 1080p 與 4k</b>（表單可選但無單價、價格為 0）。<span class="cheap">綠色</span>＝該欄最低單價。
+      480p 與 720p 單價相同；解析度愈高每秒 token 愈多，故 4k 單價反而最低（但總價仍最高）。
+    </p>
+  </section>
+
+  <!-- ============ 4. RESOLUTION x ASPECT ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">04</span>
+      <h2>輸出尺寸對照表</h2>
+      <span class="hint">W × H (px)，與模型無關</span>
+    </div>
+    <div class="tbl-scroll">
+      <table>
+        <thead><tr>
+          <th>解析度</th><th class="num">16:9</th><th class="num">9:16</th><th class="num">4:3</th>
+          <th class="num">3:4</th><th class="num">1:1</th><th class="num">21:9</th><th class="num">每秒 token 係數*</th>
+        </tr></thead>
+        <tbody>
+          <tr><td class="rowhead">480p</td><td class="num">864×496</td><td class="num">496×864</td><td class="num">752×560</td><td class="num">560×752</td><td class="num">640×640</td><td class="num">992×432</td><td class="num">≈ 10,044</td></tr>
+          <tr><td class="rowhead">720p</td><td class="num">1280×720</td><td class="num">720×1280</td><td class="num">1112×834</td><td class="num">834×1112</td><td class="num">960×960</td><td class="num">1470×630</td><td class="num">≈ 21,600</td></tr>
+          <tr><td class="rowhead">1080p</td><td class="num">1920×1080</td><td class="num">1080×1920</td><td class="num">1664×1248</td><td class="num">1248×1664</td><td class="num">1440×1440</td><td class="num">2206×946</td><td class="num">≈ 48,600</td></tr>
+          <tr><td class="rowhead">4k</td><td class="num">3840×2160</td><td class="num">2160×3840</td><td class="num">3326×2494</td><td class="num">2494×3326</td><td class="num">2880×2880</td><td class="num">4398×1886</td><td class="num">≈ 194,400</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);font-size:12.5px;margin:12px 2px 0">
+      *係數以 16:9 為例（W×H×24÷1024）。同解析度不同比例的總像素幾乎相同，故係數差異 &lt; 1%；計算器會用實際比例的 W×H 精算。
+    </p>
+  </section>
+
+  <!-- ============ 5. SCENARIOS ============ -->
+  <section>
+    <div class="sec-head">
+      <span class="sec-no">05</span>
+      <h2>常用情境預算速查</h2>
+      <span class="hint">每支單價 → 批次估算</span>
+    </div>
+    <div class="tbl-scroll">
+      <table id="scenarioTable">
+        <thead><tr>
+          <th>情境</th><th>模型</th><th class="num">解析度</th><th class="num">In / Out (s)</th>
+          <th class="num">計費時長</th><th class="num">計費 token</th><th class="num">單價/支</th>
+          <th class="num">×100</th><th class="num">×1000</th>
+        </tr></thead>
+        <tbody><!-- filled by JS --></tbody>
+      </table>
+    </div>
+    <p style="color:var(--muted);font-size:12.5px;margin:12px 2px 0" id="scNote"></p>
+  </section>
+
+  <div class="foot">
+    報表由逐項操作官方計算器（未提交表單）反推產生，所有公式經三個模型與多組參數交叉驗證精準吻合。
+    最低計費式 <code>mindur = 2·out − ⌊out/3⌋</code> 為本次逆向之核心發現。
+    生產環境請以 API 回傳之 <code>usage.completion_tokens</code> 為最終計費依據。
+  </div>
+</div>
+
+<script>
+const WH = {
+  '480p':{'16:9':[864,496],'9:16':[496,864],'4:3':[752,560],'3:4':[560,752],'1:1':[640,640],'21:9':[992,432]},
+  '720p':{'16:9':[1280,720],'9:16':[720,1280],'4:3':[1112,834],'3:4':[834,1112],'1:1':[960,960],'21:9':[1470,630]},
+  '1080p':{'16:9':[1920,1080],'9:16':[1080,1920],'4:3':[1664,1248],'3:4':[1248,1664],'1:1':[1440,1440],'21:9':[2206,946]},
+  '4k':{'16:9':[3840,2160],'9:16':[2160,3840],'4:3':[3326,2494],'3:4':[2494,3326],'1:1':[2880,2880],'21:9':[4398,1886]}
+};
+const UNIT = {
+  base:{Yes:{'480p':4.30,'720p':4.30,'1080p':4.70,'4k':2.40}, No:{'480p':7.00,'720p':7.00,'1080p':7.70,'4k':4.00}},
+  fast:{Yes:{'480p':3.30,'720p':3.30}, No:{'480p':5.60,'720p':5.60}},
+  mini:{Yes:{'480p':2.10,'720p':2.10}, No:{'480p':3.50,'720p':3.50}}
+};
+const FPS=24;
+const RES_ALL=['480p','720p','1080p','4k'];
+const RES_LTD=['480p','720p'];
+const AR_ALL=['16:9','9:16','4:3','3:4','1:1','21:9'];
+
+const $ = id => document.getElementById(id);
+const fmt = (n,d=0)=> n.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd = n => '$'+n.toLocaleString('en-US',{minimumFractionDigits:n<100?4:2,maximumFractionDigits:n<100?4:2});
+
+const state = {model:'base', video:'Yes', indur:5, outdur:5, res:'720p', ar:'16:9'};
+
+function fillSelect(el, arr, val){
+  el.innerHTML = arr.map(v=>`<option value="${v}"${String(v)===String(val)?' selected':''}>${v}</option>`).join('');
+}
+function durOptions(min,max){ const a=[]; for(let i=min;i<=max;i++)a.push(i); return a; }
+
+function compute(s){
+  const [W,H] = WH[s.res][s.ar];
+  const factor = W*H*FPS/1024;
+  const hasVid = s.video==='Yes';
+  const inD = hasVid ? s.indur : 0;
+  const est = (inD + s.outdur) * factor;
+  const mindur = hasVid ? (2*s.outdur - Math.floor(s.outdur/3)) : 0;
+  const minTok = mindur * factor;
+  const counted = hasVid ? Math.max(inD + s.outdur, mindur) : s.outdur;
+  const billed = counted * factor;
+  const unit = (UNIT[s.model][s.video]||{})[s.res];
+  const supported = unit !== undefined;
+  const price = supported ? unit/1e6*billed : 0;
+  const minApplies = hasVid && minTok > est;
+  return {W,H,factor,est,mindur,minTok,counted,billed,unit,supported,price,minApplies,hasVid};
+}
+
+function render(){
+  const s=state, r=compute(s);
+  $('rWH').textContent = `${s.res.replace('p','')==='4k'?'4k':s.res} · ${r.W} × ${r.H}`;
+  $('rFactor').textContent = fmt(Math.round(r.factor));
+  $('rEst').textContent = fmt(Math.round(r.est));
+  $('rCounted').textContent = r.counted + ' s';
+  $('rBill').textContent = fmt(Math.round(r.billed));
+  $('rUnit').textContent = r.supported ? r.unit.toFixed(2) : 'N/A';
+
+  // min row visibility
+  $('rMinRow').style.display = r.hasVid ? '' : 'none';
+  $('rMin').textContent = fmt(Math.round(r.minTok));
+
+  // bill badge
+  $('billBadge').innerHTML = r.hasVid
+    ? (r.minApplies ? '<span class="badge min">採最低 MIN</span>' : '<span class="badge est">採預估 EST</span>')
+    : '';
+
+  if(!r.supported){
+    $('price').textContent = 'N/A';
+    $('priceSub').innerHTML = `此模型不支援 <b>${s.res}</b>（fast / mini 僅支援 480p、720p）`;
+  } else {
+    $('price').textContent = r.price.toFixed(4);
+    const basis = r.hasVid ? (r.minApplies?'最低門檻':'實際時長') : '輸出時長';
+    $('priceSub').innerHTML = `計費 <b>${fmt(Math.round(r.billed))}</b> token（依${basis}）× 單價 <b>${r.unit.toFixed(2)}</b> ÷ 1M`;
+  }
+  $('b10').textContent   = r.supported ? usd(r.price*10)   : '—';
+  $('b100').textContent  = r.supported ? usd(r.price*100)  : '—';
+  $('b1000').textContent = r.supported ? usd(r.price*1000) : '—';
+}
+
+function refreshResOptions(){
+  const list = (state.model==='base') ? RES_ALL : RES_LTD;
+  if(!list.includes(state.res)) state.res = '720p';
+  fillSelect($('res'), list, state.res);
+  $('resnote').textContent = (state.model!=='base') ? 'fast / mini 僅支援 480p、720p' : '';
+}
+function refreshVideoUI(){
+  $('inwrap').style.opacity = state.video==='Yes' ? '1':'.4';
+  $('indur').disabled = state.video!=='Yes';
+  document.querySelectorAll('#video button').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.v===state.video)));
+}
+
+// init
+fillSelect($('indur'), durOptions(2,14), state.indur);
+fillSelect($('outdur'), durOptions(4,15), state.outdur);
+fillSelect($('ar'), AR_ALL, state.ar);
+refreshResOptions();
+refreshVideoUI();
+render();
+
+// events
+$('model').addEventListener('change',e=>{state.model=e.target.value; refreshResOptions(); render();});
+$('indur').addEventListener('change',e=>{state.indur=+e.target.value; render();});
+$('outdur').addEventListener('change',e=>{state.outdur=+e.target.value; render();});
+$('res').addEventListener('change',e=>{state.res=e.target.value; render();});
+$('ar').addEventListener('change',e=>{state.ar=e.target.value; render();});
+document.querySelectorAll('#video button').forEach(b=>b.addEventListener('click',()=>{
+  state.video=b.dataset.v; refreshVideoUI(); refreshResOptions(); render();
+}));
+
+// scenarios
+const scenarios = [
+  {name:'短直式試片', model:'mini', video:'Yes', res:'720p', ar:'9:16', indur:3, outdur:5},
+  {name:'標準社群片', model:'base', video:'Yes', res:'720p', ar:'16:9', indur:5, outdur:5},
+  {name:'純文生影片', model:'base', video:'No',  res:'720p', ar:'16:9', indur:0, outdur:5},
+  {name:'長輸出延展', model:'base', video:'Yes', res:'720p', ar:'16:9', indur:3, outdur:10},
+  {name:'高畫質成片', model:'base', video:'No',  res:'1080p',ar:'16:9', indur:0, outdur:8},
+  {name:'4K 精緻輸出', model:'base', video:'No',  res:'4k',   ar:'16:9', indur:0, outdur:5},
+];
+$('scenarioTable').querySelector('tbody').innerHTML = scenarios.map(sc=>{
+  const r=compute(sc);
+  const io = sc.video==='Yes' ? `${sc.indur} / ${sc.outdur}` : `— / ${sc.outdur}`;
+  return `<tr>
+    <td class="rowhead">${sc.name}</td>
+    <td>${sc.model}${sc.video==='No'?' · 無片':''}</td>
+    <td class="num">${sc.res}</td>
+    <td class="num">${io}</td>
+    <td class="num">${r.counted}s${r.minApplies?' <span class="badge min" style="margin-left:4px">MIN</span>':''}</td>
+    <td class="num">${fmt(Math.round(r.billed))}</td>
+    <td class="num">${usd(r.price)}</td>
+    <td class="num">${usd(r.price*100)}</td>
+    <td class="num">${usd(r.price*1000)}</td>
+  </tr>`;
+}).join('');
+$('scNote').innerHTML = '標「<span class="badge min">MIN</span>」者代表最低計費門檻已蓋過實際時長（短輸入＋長輸出特別容易觸發）。可在 §1 計算器自由調整參數重算。';
+</script>
